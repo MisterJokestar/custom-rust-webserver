@@ -3,6 +3,7 @@ use std::{
     io::{BufReader, prelude::*},
     net::{TcpListener, TcpStream},
 };
+use rcomm::ThreadPool;
 
 const PORT: &str = "7878";
 const ADDRESS: &str = "127.0.0.1";
@@ -10,11 +11,15 @@ const ADDRESS: &str = "127.0.0.1";
 fn main() {
     let full_address = format!("{}:{}", ADDRESS, PORT);
     let listener = TcpListener::bind(full_address).unwrap();
-    
+
+    let pool = ThreadPool::new(4);
+
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        handle_connection(stream);
+        pool.execute(|| {
+            handle_connection(stream);
+        });
     }
 }
 
