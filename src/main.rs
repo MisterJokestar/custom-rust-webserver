@@ -17,7 +17,7 @@ fn main() {
     let pool = ThreadPool::new(4);
 
     let path = Path::new("./pages");
-    let routes = build_routes(String::from("/"), path);
+    let routes = build_routes(String::from(""), path);
     println!("Routes:\n{routes:#?}\n\n");
 
     for stream in listener.incoming() {
@@ -37,7 +37,9 @@ fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
         .map(|result| result.unwrap())
         .take_while(|line| !line.is_empty())
         .collect();
-    let route = http_request[0].split_whitespace().collect::<Vec<_>>()[1];
+    let mut route = http_request[0].split_whitespace().collect::<Vec<_>>()[1];
+    let binding = clean_route(String::from(route));
+    route = binding.as_str();
 
     println!("Request: {http_request:#?}");
 
@@ -53,7 +55,22 @@ fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
     let response =
         format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
+    println!("Response: {response:#?}");
     stream.write_all(response.as_bytes()).unwrap();
+}
+
+fn clean_route(route: String) -> String {
+    let mut clean_route = String::from("");
+    for part in route.split("/").collect::<Vec<_>>() {
+        if part == "" || part == "." || part == ".." {
+            continue;
+        }
+        clean_route.push_str(format!("/{part}").as_str());
+    }
+    if clean_route == "" {
+        clean_route = String::from("/");
+    }
+    clean_route
 }
 
 fn build_routes(route: String, directory: &Path) -> HashMap<String, PathBuf> {
@@ -65,17 +82,21 @@ fn build_routes(route: String, directory: &Path) -> HashMap<String, PathBuf> {
         let name = path.file_name().unwrap().to_str().unwrap();
         if path.is_dir() {
             routes.extend(
-                build_routes(format!("{route}{name}/"), &path)
+                build_routes(format!("{route}/{name}"), &path)
             );
         } else if path.is_file() {
             match path.extension().unwrap().to_str().unwrap() {
                 "html" | "css" | "js" => {
-                    if name == "index.html" {
-                        routes.insert(route.clone(), path);
+                    if name == "index.html" || name == "page.html" {
+                        if route == "" {
+                            routes.insert(String::from("/"), path);
+                        } else {
+                            routes.insert(route.clone(), path);
+                        }
                     } else if name == "not_found.html" {
                         continue;
                     } else {
-                        routes.insert(format!("{route}{name}"), path);
+                        routes.insert(format!("{route}/{name}"), path);
                     }
                 }
                 _ => {continue;}
