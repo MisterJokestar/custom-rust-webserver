@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use rcomm::ThreadPool;
+use rcomm::models::http_response::HttpResponse;
 
 const PORT: &str = "7879";
 const ADDRESS: &str = "127.0.0.1";
@@ -43,20 +44,22 @@ fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
 
     println!("Request: {http_request:#?}");
 
-    let (status_line, filename) = if routes.contains_key(route) {
-        ("HTTP/1.1 200 OK", routes.get(route).unwrap().to_str().unwrap())
+    let (response, filename) = if routes.contains_key(route) {
+        (HttpResponse::build(String::from("HTTP/1.1"), 200),
+            routes.get(route).unwrap().to_str().unwrap())
     } else {
-        ("HTTP/1.1 404 NOT FOUND", "pages/not_found.html")
+        (HttpResponse::build(String::from("HTTP/1.1"), 404),
+            "pages/not_found.html")
     };
 
     let contents = fs::read_to_string(filename).unwrap();
     let length = contents.len();
 
-    let response =
-        format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+    let response = response.add_header(String::from("Content-Length"), format!("{length}"))
+        .add_body(contents);
 
-    println!("Response: {response:#?}");
-    stream.write_all(response.as_bytes()).unwrap();
+    println!("Response: {response}");
+    stream.write_all(&response.as_bytes()).unwrap();
 }
 
 fn clean_route(route: String) -> String {
