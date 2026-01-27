@@ -1,12 +1,15 @@
 use std::{
     collections::HashMap,
     fs,
-    io::{BufReader, prelude::*},
+    io::prelude::*,
     net::{TcpListener, TcpStream},
     path::{Path, PathBuf},
 };
 use rcomm::ThreadPool;
-use rcomm::models::http_response::HttpResponse;
+use rcomm::models::{
+    http_response::HttpResponse,
+    http_request::HttpRequest,
+};
 
 const PORT: &str = "7879";
 const ADDRESS: &str = "127.0.0.1";
@@ -19,7 +22,9 @@ fn main() {
 
     let path = Path::new("./pages");
     let routes = build_routes(String::from(""), path);
+
     println!("Routes:\n{routes:#?}\n\n");
+    println!("Listening on {ADDRESS}:{PORT}");
 
     for stream in listener.incoming() {
         let routes_clone = routes.clone();
@@ -32,21 +37,14 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
-    let buf_reader = BufReader::new(&stream);
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
-    let mut route = http_request[0].split_whitespace().collect::<Vec<_>>()[1];
-    let binding = clean_route(String::from(route));
-    route = binding.as_str();
+    let http_request = HttpRequest::build_from_stream(&stream);
+    let clean_target = clean_route(&http_request.target);
 
-    println!("Request: {http_request:#?}");
+    println!("Request: {http_request}");
 
-    let (response, filename) = if routes.contains_key(route) {
+    let (mut response, filename) = if routes.contains_key(&clean_target) {
         (HttpResponse::build(String::from("HTTP/1.1"), 200),
-            routes.get(route).unwrap().to_str().unwrap())
+            routes.get(&clean_target).unwrap().to_str().unwrap())
     } else {
         (HttpResponse::build(String::from("HTTP/1.1"), 404),
             "pages/not_found.html")
@@ -55,14 +53,14 @@ fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
     let contents = fs::read_to_string(filename).unwrap();
     let length = contents.len();
 
-    let response = response.add_header(String::from("Content-Length"), format!("{length}"))
-        .add_body(contents);
+    let _ = response.add_header(String::from("Content-Length"), format!("{length}"))
+        .add_body(contents.into());
 
     println!("Response: {response}");
     stream.write_all(&response.as_bytes()).unwrap();
 }
 
-fn clean_route(route: String) -> String {
+fn clean_route(route: &String) -> String {
     let mut clean_route = String::from("");
     for part in route.split("/").collect::<Vec<_>>() {
         if part == "" || part == "." || part == ".." {

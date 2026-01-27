@@ -9,14 +9,9 @@ pub struct HttpResponse {
     status_code: u16,
     status_phrase: String,
     headers: HashMap<String, String>,
-    body: Option<String>
+    body: Option<Vec<u8>>
 }
 
-// TODO:
-// Build a response.
-// Format Response string to send.
-// Print out a response. (With, and without body) (for debugging)
-// Access headers
 impl HttpResponse {
     pub fn build(version: String, code: u16) -> HttpResponse {
         let headers = HashMap::<String, String>::new();
@@ -30,7 +25,7 @@ impl HttpResponse {
         }
     }
 
-    pub fn add_header(mut self, title: String, value: String) -> HttpResponse {
+    pub fn add_header(&mut self, title: String, value: String) -> &mut HttpResponse {
         self.headers.insert(title, value);
         self
     }
@@ -39,18 +34,20 @@ impl HttpResponse {
         self.headers.get(&title).cloned()
     }
 
-    pub fn add_body(mut self, body: String) -> HttpResponse {
+    pub fn add_body(&mut self, body: Vec<u8>) -> &mut HttpResponse {
         self.body = Some(body); // once told me...
         self
     }
 
-    pub fn try_get_body(self) -> Option<String> {
+    pub fn try_get_body(self) -> Option<Vec<u8>> {
         self.body
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
         if let Some(body) = &self.body {
-            return format!("{self}{body}").as_bytes().to_vec();
+            let mut bytes = format!("{self}").as_bytes().to_vec();
+            bytes.append(&mut body.clone());
+            return bytes
         } else {
             return format!("{self}").as_bytes().to_vec();
         }
