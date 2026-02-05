@@ -37,7 +37,17 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
-    let http_request = HttpRequest::build_from_stream(&stream);
+    let http_request = match HttpRequest::build_from_stream(&stream) {
+        Ok(req) => req,
+        Err(e) => {
+            eprintln!("Bad request: {e}");
+            let mut response = HttpResponse::build(String::from("HTTP/1.1"), 400);
+            let body = format!("Bad Request: {e}");
+            response.add_body(body.into());
+            let _ = stream.write_all(&response.as_bytes());
+            return;
+        }
+    };
     let clean_target = clean_route(&http_request.target);
 
     println!("Request: {http_request}");
@@ -51,10 +61,7 @@ fn handle_connection(mut stream: TcpStream, routes: HashMap<String, PathBuf>) {
     };
 
     let contents = fs::read_to_string(filename).unwrap();
-    let length = contents.len();
-
-    let _ = response.add_header(String::from("Content-Length"), format!("{length}"))
-        .add_body(contents.into());
+    response.add_body(contents.into());
 
     println!("Response: {response}");
     stream.write_all(&response.as_bytes()).unwrap();
