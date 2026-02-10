@@ -167,17 +167,6 @@ fn send_request(addr: &str, method: &str, path: &str) -> Result<TestResponse, St
     read_response(&mut stream)
 }
 
-fn send_raw(addr: &str, bytes: &[u8]) -> Result<TestResponse, String> {
-    let mut stream = TcpStream::connect(addr).map_err(|e| format!("connect: {e}"))?;
-    stream
-        .set_read_timeout(Some(Duration::from_secs(5)))
-        .map_err(|e| format!("set timeout: {e}"))?;
-    stream
-        .write_all(bytes)
-        .map_err(|e| format!("write: {e}"))?;
-    read_response(&mut stream)
-}
-
 // ---------------------------------------------------------------------------
 // Mini test framework
 // ---------------------------------------------------------------------------
