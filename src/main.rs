@@ -11,12 +11,19 @@ use rcomm::models::{
     http_request::HttpRequest,
 };
 
-const PORT: &str = "7879";
-const ADDRESS: &str = "127.0.0.1";
+fn get_port() -> String {
+    std::env::var("RCOMM_PORT").unwrap_or_else(|_| String::from("7878"))
+}
+
+fn get_address() -> String {
+    std::env::var("RCOMM_ADDRESS").unwrap_or_else(|_| String::from("127.0.0.1"))
+}
 
 fn main() {
-    let full_address = format!("{ADDRESS}:{PORT}");
-    let listener = TcpListener::bind(full_address).unwrap();
+    let port = get_port();
+    let address = get_address();
+    let full_address = format!("{address}:{port}");
+    let listener = TcpListener::bind(&full_address).unwrap();
 
     let pool = ThreadPool::new(4);
 
@@ -24,7 +31,7 @@ fn main() {
     let routes = build_routes(String::from(""), path);
 
     println!("Routes:\n{routes:#?}\n\n");
-    println!("Listening on {ADDRESS}:{PORT}");
+    println!("Listening on {full_address}");
 
     for stream in listener.incoming() {
         let routes_clone = routes.clone();
