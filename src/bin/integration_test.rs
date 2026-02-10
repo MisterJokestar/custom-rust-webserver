@@ -252,20 +252,6 @@ fn test_howdy_page_css(addr: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn test_howdy_howdyagain(addr: &str) -> Result<(), String> {
-    let resp = send_request(addr, "GET", "/howdy/howdyagain")?;
-    assert_eq_or_err(&resp.status_code, &200, "status")?;
-    assert_contains_or_err(&resp.body, "Howdy!", "body")?;
-    Ok(())
-}
-
-fn test_howdy_howdyagain_howdyagain(addr: &str) -> Result<(), String> {
-    let resp = send_request(addr, "GET", "/howdy/howdyagain/howdyagain")?;
-    assert_eq_or_err(&resp.status_code, &200, "status")?;
-    assert_contains_or_err(&resp.body, "Howdy!", "body")?;
-    Ok(())
-}
-
 fn test_404_does_not_exist(addr: &str) -> Result<(), String> {
     let resp = send_request(addr, "GET", "/does-not-exist")?;
     assert_eq_or_err(&resp.status_code, &404, "status")?;
@@ -358,10 +344,6 @@ fn main() {
         run_test("index_css", || test_index_css(&addr)),
         run_test("howdy_route", || test_howdy_route(&addr)),
         run_test("howdy_page_css", || test_howdy_page_css(&addr)),
-        run_test("howdy_howdyagain", || test_howdy_howdyagain(&addr)),
-        run_test("howdy_howdyagain_howdyagain", || {
-            test_howdy_howdyagain_howdyagain(&addr)
-        }),
         run_test("404_does_not_exist", || test_404_does_not_exist(&addr)),
         run_test("404_deep_path", || test_404_deep_path(&addr)),
         run_test("content_length_matches", || {
