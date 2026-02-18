@@ -10,11 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 cargo build                            # Build all binaries (server + integration tests)
-cargo run                              # Run the server (default 127.0.0.1:7879)
+cargo run                              # Run the server (default 127.0.0.1:7878)
 cargo test                             # Run all unit tests (34 tests across lib + models)
 cargo test <test_name>                 # Run a single test by name
 cargo test -- --nocapture              # Run tests with println! output visible
-cargo run --bin integration_test       # Run end-to-end integration tests (12 tests)
+cargo run --bin integration_test       # Run end-to-end integration tests (10 tests)
 ```
 
 The server port/address can be overridden via environment variables:
@@ -36,7 +36,9 @@ The server port/address can be overridden via environment variables:
 
 3. **Main Server** (`src/main.rs`) — TCP listener loop dispatching connections to the thread pool. Contains `build_routes()` (recursive `pages/` scanner) and `handle_connection()`. Route targets are cleaned via `clean_route()` which strips empty segments, `.`, and `..`.
 
-4. **Integration Tests** (`src/bin/integration_test.rs`) — Separate binary that spawns the real server on a random port, sends HTTP requests over TCP, and validates responses. Uses its own mini test framework with `TestResult` / `run_test()`.
+4. **Integration Tests** (`src/bin/integration_test/`) — Separate binary that spawns the real server on a random port, sends HTTP requests over TCP, and validates responses. Split into two modules:
+   - `test_framework.rs` — Server lifecycle helpers (`pick_free_port`, `start_server`, `wait_for_server`), HTTP client (`send_request`, `read_response`), and mini test framework (`TestResult`, `run_test`, assert helpers)
+   - `http_tests.rs` — The actual test functions and `run_http_tests()` entry point
 
 ### Request/Response Pattern
 
@@ -63,7 +65,7 @@ Pattern: Files named `index.html` or `page.html` become routes at their director
 
 ### Module Structure
 
-The library crate (`src/lib.rs`) exports `ThreadPool` and the `models` module. Models are re-exported via `src/models.rs` (barrel file, not `mod.rs`). The server binary (`src/main.rs`) and integration test binary (`src/bin/integration_test.rs`) are discovered automatically by Cargo.
+The library crate (`src/lib.rs`) exports `ThreadPool` and the `models` module. Models are re-exported via `src/models.rs` (barrel file, not `mod.rs`). The server binary (`src/main.rs`) and integration test binary (`src/bin/integration_test/main.rs`) are discovered automatically by Cargo.
 
 ## Known Issues
 
